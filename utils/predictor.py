@@ -9,10 +9,11 @@ from ultralytics import YOLO
 
 class Predictor:
     model_path: str = ""
-    model = YOLO(model_path, task="detect")
+    model = None
 
     def __init__(self, model_path: str):
         self.model_path = model_path
+        self.model = YOLO(self.model_path, task="detect")
 
     def load(self):
         self.model = YOLO(self.model_path, task="detect")
