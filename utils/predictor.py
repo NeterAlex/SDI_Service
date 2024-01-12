@@ -26,7 +26,7 @@ class Predictor:
         im = Image.fromarray(im_array[..., ::-1])
         im.save(image_stream, format='JPEG')
         if save_image:
-            file_str = f'image_cache/{time.strftime("%Y-%m-%d-%H-%M-%S")}-{uuid.uuid4().hex[:8]}.jpg'
+            file_str = f'assets/image_cache/{time.strftime("%Y-%m-%d-%H-%M-%S")}-{uuid.uuid4().hex[:8]}.jpg'
             im.save(file_str)
 
         return self.transform_data(boxes), image_stream.getvalue()

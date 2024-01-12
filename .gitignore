@@ -1,3 +1,4 @@
-/image_cache/
+/assets/image_cache/
 /venv/
-/models/
+/assets/models/
+/assets/database/dev.db
