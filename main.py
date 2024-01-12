@@ -6,11 +6,11 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Depends
 from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session
+from sqlmodel import SQLModel, Session, select
 from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
-from utils import Predictor, hash_password
+from utils import Predictor, hash_password, generate_jwt_token
 
 # Initialize server
 app = FastAPI()
@@ -77,7 +77,7 @@ async def downy_mildew_detect_controller(*, session: Session = Depends(get_sessi
         data = MildewData(user=user, type="downy", data=data.__str__(), image=save_relative_path)
         session.add(data)
         session.commit()
-        # return result
+        # make result
         result = {
             "is_success": True,
             "message": "识别成功",
@@ -123,7 +123,7 @@ async def powdery_mildew_detect_controller(*, session: Session = Depends(get_ses
         data = MildewData(user=user, type="powdery", data=data.__str__(), image=save_relative_path)
         session.add(data)
         session.commit()
-        # return result
+        # make result
         result = {
             "is_success": True,
             "message": "识别成功",
@@ -156,4 +156,26 @@ async def register_user(*, session: Session = Depends(get_session), username: st
         return {
             "is_success": False,
             "message": "注册失败, 由于" + e.__str__(),
+        }
+
+
+@app.post("/user/login")
+async def login_user(*, session: Session = Depends(get_session), username: str, password: str) -> object:
+    try:
+        statement = select(User).where(User.username == username)
+        user = session.exec(statement).first()
+        if not user:
+            return {"is_success": False, "message": "用户不存在"}
+        if user.password != hash_password(password):
+            return {"is_success": False, "message": "密码不匹配"}
+        return {
+            "is_success": True,
+            "message": "登录成功",
+            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+            "data": {"jwt_token": generate_jwt_token(user)}
+        }
+    except Exception as e:
+        return {
+            "is_success": False,
+            "message": "登录失败, 由于" + e.__str__(),
         }

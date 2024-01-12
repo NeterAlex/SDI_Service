@@ -16,3 +16,5 @@ Requires `CUDA` installed.
 + ultralytics
 + pytorch
 + sqlmodel
++ pyjwt
++ dotenv

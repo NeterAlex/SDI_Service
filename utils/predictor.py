@@ -33,17 +33,17 @@ class Predictor:
 
     @staticmethod
     def transform_data(boxes: Any) -> list[dict[str, int | Any]]:
-        id: int = 1
+        _id: int = 1
         xyxy_list = boxes.xyxy.tolist()
         conf_list = boxes.conf.tolist()
         cls_list = boxes.cls.tolist()
         merged_data: list[dict[str, int | Any]] = []
         for xyxy, conf, cls in zip(xyxy_list, conf_list, cls_list):
             merged_data.append({
-                'id': id,
+                'id': _id,
                 'xyxy': xyxy,
                 'conf': conf,
                 'cls': cls
             })
-            id += 1
+            _id += 1
         return merged_data

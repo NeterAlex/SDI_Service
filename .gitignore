@@ -4,3 +4,4 @@
 /assets/database/dev.db
 /static/results/downy-mildew/*.jpg
 /static/results/powdery-mildew/*.jpg
+!/.env
