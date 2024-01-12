@@ -49,8 +49,8 @@ async def root():
 
 
 @app.post("/calc/downy")
-async def downy_mildew_detect_controller(*, session: Session = Depends(get_session),
-                                         file: UploadFile = File(...), user_id: int) -> object:
+async def downy_mildew_detect(*, session: Session = Depends(get_session),
+                              file: UploadFile = File(...), user_id: int) -> object:
     """
     Downy Mildew Detect Controller
     :param user_id: User ID
@@ -95,8 +95,8 @@ async def downy_mildew_detect_controller(*, session: Session = Depends(get_sessi
 
 
 @app.post("/calc/powdery")
-async def powdery_mildew_detect_controller(*, session: Session = Depends(get_session),
-                                           file: UploadFile = File(...), user_id: int) -> object:
+async def powdery_mildew_detect(*, session: Session = Depends(get_session),
+                                file: UploadFile = File(...), user_id: int) -> object:
     """
     Powdery Mildew Detect Controller
     :param user_id: User ID
