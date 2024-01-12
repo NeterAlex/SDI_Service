@@ -8,7 +8,7 @@ from model import User
 
 pwd_context = CryptContext(schemes=["bcrypt"])
 
-config = dotenv_values(".env")
+config = dotenv_values("dev.env")
 JWT_SECRET_KEY = config.get("JWT_SECRET_KEY")
 JWT_TOKEN_EXPIRE_HOUR = config.get("JWT_TOKEN_EXPIRE_HOUR")
 
