@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from routers.calculators import calculator_router
+from routers import calculator_router
 
 app = FastAPI()
 

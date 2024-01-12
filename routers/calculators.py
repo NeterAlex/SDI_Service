@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from fastapi import APIRouter, UploadFile, File
 
-from utils.predictor import Predictor
+from utils import Predictor
 
 # Model Configurations
 powdery_model_path: str = r"models/powdery_m_20240106.pt"
@@ -12,13 +12,18 @@ downy_model_path: str = r"models/downy_m_20231108.pt"
 
 calculator_router = APIRouter()
 
-# Init predictors
+# Initialize predictors
 downy_pd = Predictor(downy_model_path)
 powdery_pd = Predictor(powdery_model_path)
 
 
 @calculator_router.post("/calc/downy")
-async def downy_mildew_detect(file: UploadFile = File(...)):
+async def downy_mildew_detect_controller(file: UploadFile = File(...)) -> object:
+    """
+    Downy Mildew Detect Controller
+    :param file: Image file
+    :return: Result with data and other info
+    """
     try:
         image_bytes = await file.read()
         image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
@@ -41,7 +46,12 @@ async def downy_mildew_detect(file: UploadFile = File(...)):
 
 
 @calculator_router.post("/calc/powdery")
-async def powdery_mildew_detect(file: UploadFile = File(...)):
+async def powdery_mildew_detect_controller(file: UploadFile = File(...)) -> object:
+    """
+    Powdery Mildew Detect Controller
+    :param file: Image file
+    :return: Result with data and other info
+    """
     try:
         image_bytes = await file.read()
         image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
