@@ -143,6 +143,14 @@ async def powdery_mildew_detect_controller(*, session: Session = Depends(get_ses
 @app.post("/user/register")
 async def register_user(*, session: Session = Depends(get_session), username: str, password: str,
                         nickname: str) -> object:
+    """
+    Register new user
+    :param session: Session
+    :param username: Username
+    :param password: Password
+    :param nickname: Nickname
+    :return: Result with if register is successful
+    """
     try:
         user = User(username=username, password=hash_password(password), nickname=nickname)
         session.add(user)
@@ -161,6 +169,13 @@ async def register_user(*, session: Session = Depends(get_session), username: st
 
 @app.post("/user/login")
 async def login_user(*, session: Session = Depends(get_session), username: str, password: str) -> object:
+    """
+    User login with username and password
+    :param session: Session
+    :param username: Username
+    :param password: Password
+    :return: Result with jwt data
+    """
     try:
         statement = select(User).where(User.username == username)
         user = session.exec(statement).first()
