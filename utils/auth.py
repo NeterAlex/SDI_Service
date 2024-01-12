@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 
 from model import User
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"])
 
 config = dotenv_values(".env")
 JWT_SECRET_KEY = config.get("JWT_SECRET_KEY")

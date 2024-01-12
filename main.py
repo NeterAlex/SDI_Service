@@ -10,7 +10,7 @@ from sqlmodel import SQLModel, Session, select
 from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
-from utils import Predictor, hash_password, generate_jwt_token
+from utils import Predictor, hash_password, generate_jwt_token, verify_password
 
 # Initialize server
 app = FastAPI()
@@ -19,7 +19,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Initialize db
 sqlite_url: str = "sqlite:///database.db"
 connect_args = {"check_same_thread": False}
-engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
+engine = create_engine(sqlite_url, echo=False, connect_args=connect_args)
 
 
 def get_session():
@@ -166,7 +166,8 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
         user = session.exec(statement).first()
         if not user:
             return {"is_success": False, "message": "用户不存在"}
-        if user.password != hash_password(password):
+        if not verify_password(password, user.password):
+            print(password, user.password, verify_password(password, user.password))
             return {"is_success": False, "message": "密码不匹配"}
         return {
             "is_success": True,
