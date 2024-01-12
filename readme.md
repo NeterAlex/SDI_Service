@@ -6,4 +6,13 @@ Core API server application for SDI Project built with FastAPI & Ultralytics.
 
 Clone and Open using `PyCharm` or `VS Code`.
 
-Requires `CUDA`, `PyTorch`, `Ultralytics` and `FastAPI` installed.
+Requires `CUDA` installed.
+
+## Depends
+
++ bcrypt
++ passlib
++ fastapi
++ ultralytics
++ pytorch
++ sqlmodel

@@ -18,6 +18,7 @@ class MildewData(SQLModel, table=True):
     type: str = Field(index=True, default='mildew')
     data: str = Field(default="{}")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    image: str = Field(default="/")
 
     user_id: Optional[int] = Field(default=None, foreign_key='user.id')
     user: Optional["User"] = Relationship(back_populates='datasets')
