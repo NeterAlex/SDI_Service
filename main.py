@@ -46,7 +46,7 @@ def on_startup() -> None:
 
 # Global error handler
 @app.exception_handler(Exception)
-async def exception_handler(request, exc):
+async def exception_handler(exc):
     logging.exception(f"[Error] {exc}")
     return {
         "is_success": False,
