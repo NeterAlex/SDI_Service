@@ -11,6 +11,12 @@ class Processor:
 
     @staticmethod
     def organize_detected_result(data: List[dict], image: str) -> dict:
+        """
+        Organize the detected result via cls
+        :param data: list of detected result
+        :param image: image path of certain result
+        :return: results classified by cls
+        """
         cls_dict = {}
         for item in data:
             item["xyxy"] = "omit"
