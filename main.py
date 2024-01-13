@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import uuid
@@ -11,7 +12,7 @@ from sqlmodel import SQLModel, Session, select
 from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
-from utils import Predictor, hash_password, generate_jwt_token, verify_password, decode_jwt_token
+from utils import Predictor, hash_password, generate_jwt_token, verify_password, decode_jwt_token, Processor
 
 # Initialize server
 app = FastAPI()
@@ -234,4 +235,28 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
         return {
             "is_success": False,
             "message": "登录失败, 由于" + e.__str__(),
+        }
+
+
+@app.get("/data/list")
+def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> object:
+    try:
+        user = session.get(User, user_id)
+        if not user:
+            return {"is_success": False, "message": "用户不存在"}
+        statement = select(MildewData).where(MildewData.user == user)
+        data = session.exec(statement).all()
+        result = []
+        for item in data:
+            result.append(Processor.organize_detected_result(json.loads(item.data.replace("\'", "\"")), item.image))
+        return {
+            "is_success": True,
+            "message": "登录成功",
+            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+            "data": result
+        }
+    except Exception as e:
+        return {
+            "is_success": False,
+            "message": "查询失败, 由于" + e.__str__(),
         }
