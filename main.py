@@ -44,6 +44,17 @@ def on_startup() -> None:
     SQLModel.metadata.create_all(engine)
 
 
+# Global error handler
+@app.exception_handler(Exception)
+async def exception_handler(request, exc):
+    logging.exception(f"[Error] {exc}")
+    return {
+        "is_success": False,
+        "message": "处理失败，由于" + str(exc),
+        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z'
+    }
+
+
 # Middleware
 @app.middleware("http")
 async def verify_token(request: Request, call_next):
@@ -100,40 +111,32 @@ async def downy_mildew_detect(*, session: Session = Depends(get_session),
     :param file: Image file
     :return: Result with data and other info
     """
-    try:
-        image_bytes = await file.read()
-        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-        data, result_stream = downy_pd.predict_bytes(image, False)
-        await file.close()
-        # save image
-        current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        save_relative_path = os.path.join("static", "results", "downy-mildew",
-                                          f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg")
-        save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
-        with open(save_obvious_path, "wb") as f:
-            f.write(result_stream)
-        # operate db
-        user = session.get(User, user_id)
-        if not user:
-            return {"is_success": False, "message": "用户不存在"}
-        data = MildewData(user=user, type="downy", data=data.__str__(), image=save_relative_path)
-        session.add(data)
-        session.commit()
-        # make result
-        result = {
-            "is_success": True,
-            "message": "识别成功",
-            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
-            "data": data,
-        }
-        return result
-    except Exception as e:
-        return {
-            "is_success": False,
-            "message": "识别失败, 由于" + e.__str__(),
-            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
-            "data": [],
-        }
+    image_bytes = await file.read()
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    data, result_stream = downy_pd.predict_bytes(image, False)
+    await file.close()
+    # save image
+    current_time = datetime.now().strftime("%Y%m%d%H%M%S")
+    save_relative_path = os.path.join("static", "results", "downy-mildew",
+                                      f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg")
+    save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
+    with open(save_obvious_path, "wb") as f:
+        f.write(result_stream)
+    # operate db
+    user = session.get(User, user_id)
+    if not user:
+        return {"is_success": False, "message": "用户不存在"}
+    data = MildewData(user=user, type="downy", data=data.__str__(), image=save_relative_path)
+    session.add(data)
+    session.commit()
+    # make result
+    result = {
+        "is_success": True,
+        "message": "识别成功",
+        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "data": data,
+    }
+    return result
 
 
 @app.post("/calc/powdery")
@@ -146,40 +149,32 @@ async def powdery_mildew_detect(*, session: Session = Depends(get_session),
     :param file: Image file
     :return: Result with data and other info
     """
-    try:
-        image_bytes = await file.read()
-        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-        data, result_stream = powdery_pd.predict_bytes(image, False)
-        await file.close()
-        # save image
-        current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        save_relative_path = os.path.join("static", "results", "powdery-mildew",
-                                          f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg")
-        save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
-        with open(save_obvious_path, "wb") as f:
-            f.write(result_stream)
-        # operate db
-        user = session.get(User, user_id)
-        if not user:
-            return {"is_success": False, "message": "用户不存在"}
-        data = MildewData(user=user, type="powdery", data=data.__str__(), image=save_relative_path)
-        session.add(data)
-        session.commit()
-        # make result
-        result = {
-            "is_success": True,
-            "message": "识别成功",
-            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
-            "data": data,
-        }
-        return result
-    except Exception as e:
-        return {
-            "is_success": False,
-            "message": "识别失败, 由于" + e.__str__(),
-            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
-            "data": [],
-        }
+    image_bytes = await file.read()
+    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    data, result_stream = powdery_pd.predict_bytes(image, False)
+    await file.close()
+    # save image
+    current_time = datetime.now().strftime("%Y%m%d%H%M%S")
+    save_relative_path = os.path.join("static", "results", "powdery-mildew",
+                                      f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg")
+    save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
+    with open(save_obvious_path, "wb") as f:
+        f.write(result_stream)
+    # operate db
+    user = session.get(User, user_id)
+    if not user:
+        return {"is_success": False, "message": "用户不存在"}
+    data = MildewData(user=user, type="powdery", data=data.__str__(), image=save_relative_path)
+    session.add(data)
+    session.commit()
+    # make result
+    result = {
+        "is_success": True,
+        "message": "识别成功",
+        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "data": data,
+    }
+    return result
 
 
 @app.post("/user/register")
@@ -193,20 +188,14 @@ async def register_user(*, session: Session = Depends(get_session), username: st
     :param nickname: Nickname
     :return: Result with if register is successful
     """
-    try:
-        user = User(username=username, password=hash_password(password), nickname=nickname)
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-        return {
-            "is_success": True,
-            "message": "注册成功",
-        }
-    except Exception as e:
-        return {
-            "is_success": False,
-            "message": "注册失败, 由于" + e.__str__(),
-        }
+    user = User(username=username, password=hash_password(password), nickname=nickname)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return {
+        "is_success": True,
+        "message": "注册成功",
+    }
 
 
 @app.post("/user/login")
@@ -218,45 +207,38 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
     :param password: Password
     :return: Result with jwt data
     """
-    try:
-        statement = select(User).where(User.username == username)
-        user = session.exec(statement).first()
-        if not user:
-            return {"is_success": False, "message": "用户不存在"}
-        if not verify_password(password, user.password):
-            return {"is_success": False, "message": "密码不匹配"}
-        return {
-            "is_success": True,
-            "message": "登录成功",
-            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
-            "data": {"jwt_token": generate_jwt_token(user)}
-        }
-    except Exception as e:
-        return {
-            "is_success": False,
-            "message": "登录失败, 由于" + e.__str__(),
-        }
+    statement = select(User).where(User.username == username)
+    user = session.exec(statement).first()
+    if not user:
+        return {"is_success": False, "message": "用户不存在"}
+    if not verify_password(password, user.password):
+        return {"is_success": False, "message": "密码不匹配"}
+    return {
+        "is_success": True,
+        "message": "登录成功",
+        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "data": {"jwt_token": generate_jwt_token(user)}
+    }
 
 
 @app.get("/data/list")
 def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> object:
-    try:
-        user = session.get(User, user_id)
-        if not user:
-            return {"is_success": False, "message": "用户不存在"}
-        statement = select(MildewData).where(MildewData.user == user)
-        data = session.exec(statement).all()
-        result = []
-        for item in data:
-            result.append(Processor.organize_detected_result(json.loads(item.data.replace("\'", "\"")), item.image))
-        return {
-            "is_success": True,
-            "message": "登录成功",
-            "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
-            "data": result
-        }
-    except Exception as e:
-        return {
-            "is_success": False,
-            "message": "查询失败, 由于" + e.__str__(),
-        }
+    user = session.get(User, user_id)
+    if not user:
+        return {"is_success": False, "message": "用户不存在"}
+    statement = select(MildewData).where(MildewData.user == user)
+    data = session.exec(statement).all()
+    result = []
+    for item in data:
+        result.append({
+            "id": item.id,
+            "type": item.type,
+            "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
+            "image": item.image
+        })
+    return {
+        "is_success": True,
+        "message": "数据获取成功",
+        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "data": result
+    }

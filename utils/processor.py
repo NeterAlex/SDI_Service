@@ -10,7 +10,7 @@ class Processor:
         self.enabled = True
 
     @staticmethod
-    def organize_detected_result(data: List[dict], image: str) -> dict:
+    def organize_detected_result(data: List[dict]) -> dict:
         """
         Organize the detected result via cls
         :param data: list of detected result
@@ -21,7 +21,6 @@ class Processor:
         for item in data:
             item["xyxy"] = "omit"
             item["conf"] = "{:.2f}".format(float(item["conf"]))
-            item["image"] = image
             cls_name = item["cls"]
             if cls_name in cls_dict:
                 cls_dict[cls_name].append(item)
