@@ -36,7 +36,7 @@ def generate_jwt_token(user: User) -> str:
 def decode_jwt_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=['HS256'])
-        if datetime.utcnow() > payload['exp']:
+        if datetime.utcnow() > datetime.fromtimestamp(payload['exp']):
             raise jwt.ExpiredSignatureError("Token已过期")
         return payload
     except jwt.ExpiredSignatureError:

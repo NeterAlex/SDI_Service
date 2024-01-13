@@ -1,16 +1,17 @@
+import logging
 import os
 import uuid
 from datetime import datetime
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, UploadFile, File, Depends
+from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, select
 from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
-from utils import Predictor, hash_password, generate_jwt_token, verify_password
+from utils import Predictor, hash_password, generate_jwt_token, verify_password, decode_jwt_token
 
 # Initialize server
 app = FastAPI()
@@ -40,6 +41,46 @@ powdery_pd = Predictor(powdery_model_path)
 @app.on_event("startup")
 def on_startup() -> None:
     SQLModel.metadata.create_all(engine)
+
+
+# Middleware
+@app.middleware("http")
+async def verify_token(request: Request, call_next):
+    """
+    Middleware to verify that the token is valid
+    """
+    auth_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    # Get request path
+    path: str = request.get('path')
+    # Exclude /login & /docs
+    if path.startswith('/user/login') | path.startswith('/user/register') | path.startswith('/docs') | path.startswith(
+            '/openapi'):
+        response = await call_next(request)
+        return response
+    else:
+        try:
+            # Get token
+            authorization: str = request.headers.get('authorization')
+            if not authorization:
+                response = Response(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content="Invalid authentication credentials",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+                return response
+            token = authorization.split(' ')[1]
+            # Verify token
+            user_claim = decode_jwt_token(token)
+            if user_claim.get('user_id') is not None:
+                response = await call_next(request)
+                return response
+        except Exception as e:
+            logging.log(1, e.__str__())
+            raise auth_error
 
 
 # Controllers
@@ -182,7 +223,6 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
         if not user:
             return {"is_success": False, "message": "用户不存在"}
         if not verify_password(password, user.password):
-            print(password, user.password, verify_password(password, user.password))
             return {"is_success": False, "message": "密码不匹配"}
         return {
             "is_success": True,
