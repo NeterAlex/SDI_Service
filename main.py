@@ -223,6 +223,12 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
 
 @app.get("/data/list")
 def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> object:
+    """
+    Get data list owned by certain user
+    :param session: Session
+    :param user_id: owner id
+    :return: Result with data list classified by cls
+    """
     user = session.get(User, user_id)
     if not user:
         return {"is_success": False, "message": "用户不存在"}
@@ -233,8 +239,8 @@ def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> o
         result.append({
             "id": item.id,
             "type": item.type,
+            "image": item.image,
             "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
-            "image": item.image
         })
     return {
         "is_success": True,
