@@ -69,7 +69,8 @@ async def verify_token(request: Request, call_next):
     # Get request path
     path: str = request.get('path')
     # Exclude /login & /docs
-    if path.startswith('/user/login') | path.startswith('/user/register') | path.startswith('/docs') | path.startswith(
+    if path.startswith('/ping') | path.startswith('/user/login') | path.startswith('/user/register') | path.startswith(
+            '/docs') | path.startswith(
             '/openapi'):
         response = await call_next(request)
         return response

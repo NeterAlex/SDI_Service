@@ -34,9 +34,9 @@ class Predictor:
     @staticmethod
     def transform_data(boxes: Any) -> list[dict[str, int | Any]]:
         _id: int = 1
-        xyxy_list = boxes.xyxy.tolist()
-        conf_list = boxes.conf.tolist()
-        cls_list = boxes.cls.tolist()
+        xyxy_list: list = boxes.xyxy.tolist()
+        conf_list: list = boxes.conf.tolist()
+        cls_list: list = boxes.cls.tolist()
         merged_data: list[dict[str, int | Any]] = []
         for xyxy, conf, cls in zip(xyxy_list, conf_list, cls_list):
             merged_data.append({
