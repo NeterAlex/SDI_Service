@@ -7,6 +7,7 @@ from datetime import datetime
 import cv2
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, select
 from starlette.staticfiles import StaticFiles
@@ -56,6 +57,11 @@ async def exception_handler(exc):
 
 
 # Middleware
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+)
+
+
 @app.middleware("http")
 async def verify_token(request: Request, call_next):
     """
@@ -71,7 +77,7 @@ async def verify_token(request: Request, call_next):
     # Exclude /login & /docs
     if path.startswith('/ping') | path.startswith('/user/login') | path.startswith('/user/register') | path.startswith(
             '/docs') | path.startswith(
-            '/openapi'):
+        '/openapi'):
         response = await call_next(request)
         return response
     else:
