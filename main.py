@@ -3,10 +3,11 @@ import logging
 import os
 import uuid
 from datetime import datetime
+from typing import Annotated
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response
+from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, select, col
@@ -186,8 +187,9 @@ async def powdery_mildew_detect(*, session: Session = Depends(get_session),
 
 
 @app.post("/user/register")
-async def register_user(*, session: Session = Depends(get_session), username: str, password: str,
-                        nickname: str) -> object:
+async def register_user(*, session: Session = Depends(get_session), username: Annotated[str, Form()],
+                        password: Annotated[str, Form()],
+                        nickname: Annotated[str, Form()]) -> object:
     """
     Register new user
     :param session: Session
@@ -207,7 +209,8 @@ async def register_user(*, session: Session = Depends(get_session), username: st
 
 
 @app.post("/user/login")
-async def login_user(*, session: Session = Depends(get_session), username: str, password: str) -> object:
+async def login_user(*, session: Session = Depends(get_session), username: Annotated[str, Form()],
+                     password: Annotated[str, Form()]) -> object:
     """
     User login with username and password
     :param session: Session
