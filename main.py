@@ -225,7 +225,11 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
         "success": True,
         "message": "登录成功",
         "time": datetime.now().isoformat(timespec="seconds") + 'Z',
-        "data": {"jwt_token": generate_jwt_token(user)}
+        "data": {
+            "id": user.id,
+            "nickname": user.nickname,
+            "jwt_token": generate_jwt_token(user)
+        }
     }
 
 
