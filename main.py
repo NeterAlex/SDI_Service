@@ -9,7 +9,7 @@ import numpy as np
 from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session, select
+from sqlmodel import SQLModel, Session, select, col
 from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
@@ -241,6 +241,32 @@ def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> o
     if not user:
         return {"success": False, "message": "用户不存在"}
     statement = select(MildewData).where(MildewData.user == user)
+    data = session.exec(statement).all()
+    result = []
+    for item in data:
+        result.append({
+            "id": item.id,
+            "type": item.type,
+            "image": item.image,
+            "time": item.created_at,
+            "count": Processor.organize_downy_detected_info(json.loads(item.data.replace("\'", "\""))),
+            "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
+        })
+    return {
+        "success": True,
+        "message": "数据获取成功",
+        "time": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "data": result
+    }
+
+
+@app.get("/data/recent")
+def get_recent_data(*, session: Session = Depends(get_session), user_id: int, count: int = 3) -> object:
+    user = session.get(User, user_id)
+    if not user:
+        return {"success": False, "message": "用户不存在"}
+    statement = select(MildewData).where(MildewData.user == user).order_by(col(MildewData.created_at).desc()).limit(
+        count)
     data = session.exec(statement).all()
     result = []
     for item in data:
