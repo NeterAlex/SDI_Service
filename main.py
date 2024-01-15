@@ -16,7 +16,7 @@ from model import User, MildewData
 from utils import Predictor, hash_password, generate_jwt_token, verify_password, decode_jwt_token, Processor
 
 # Initialize server
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Initialize db
@@ -50,9 +50,9 @@ def on_startup() -> None:
 async def exception_handler(request, exc):
     logging.exception(f"[Error] {exc}")
     return {
-        "is_success": False,
+        "success": False,
         "message": "处理失败，由于" + str(exc),
-        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z'
+        "time": datetime.now().isoformat(timespec="seconds") + 'Z'
     }
 
 
@@ -74,9 +74,10 @@ async def verify_token(request: Request, call_next):
     )
     # Get request path
     path: str = request.get('path')
-    # Exclude /login & /docs
-    if path.startswith('/ping') | path.startswith('/user/login') | path.startswith('/user/register') | path.startswith(
-            '/docs') | path.startswith(
+    # Exclude /login & /docs & /static
+    if path.startswith('/ping') | path.startswith('/static') | path.startswith('/user/login') | path.startswith(
+            '/user/register') | path.startswith(
+        '/docs') | path.startswith(
         '/openapi'):
         response = await call_next(request)
         return response
@@ -132,15 +133,15 @@ async def downy_mildew_detect(*, session: Session = Depends(get_session),
     # operate db
     user = session.get(User, user_id)
     if not user:
-        return {"is_success": False, "message": "用户不存在"}
+        return {"success": False, "message": "用户不存在"}
     data = MildewData(user=user, type="downy", data=data.__str__(), image=save_relative_path)
     session.add(data)
     session.commit()
     # make result
     result = {
-        "is_success": True,
+        "success": True,
         "message": "识别成功",
-        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "time": datetime.now().isoformat(timespec="seconds") + 'Z',
         "data": data,
     }
     return result
@@ -170,15 +171,15 @@ async def powdery_mildew_detect(*, session: Session = Depends(get_session),
     # operate db
     user = session.get(User, user_id)
     if not user:
-        return {"is_success": False, "message": "用户不存在"}
+        return {"success": False, "message": "用户不存在"}
     data = MildewData(user=user, type="powdery", data=data.__str__(), image=save_relative_path)
     session.add(data)
     session.commit()
     # make result
     result = {
-        "is_success": True,
+        "success": True,
         "message": "识别成功",
-        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "time": datetime.now().isoformat(timespec="seconds") + 'Z',
         "data": data,
     }
     return result
@@ -200,7 +201,7 @@ async def register_user(*, session: Session = Depends(get_session), username: st
     session.commit()
     session.refresh(user)
     return {
-        "is_success": True,
+        "success": True,
         "message": "注册成功",
     }
 
@@ -217,13 +218,13 @@ async def login_user(*, session: Session = Depends(get_session), username: str, 
     statement = select(User).where(User.username == username)
     user = session.exec(statement).first()
     if not user:
-        return {"is_success": False, "message": "用户不存在"}
+        return {"success": False, "message": "用户不存在"}
     if not verify_password(password, user.password):
-        return {"is_success": False, "message": "密码不匹配"}
+        return {"success": False, "message": "密码不匹配"}
     return {
-        "is_success": True,
+        "success": True,
         "message": "登录成功",
-        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "time": datetime.now().isoformat(timespec="seconds") + 'Z',
         "data": {"jwt_token": generate_jwt_token(user)}
     }
 
@@ -238,7 +239,7 @@ def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> o
     """
     user = session.get(User, user_id)
     if not user:
-        return {"is_success": False, "message": "用户不存在"}
+        return {"success": False, "message": "用户不存在"}
     statement = select(MildewData).where(MildewData.user == user)
     data = session.exec(statement).all()
     result = []
@@ -248,11 +249,12 @@ def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> o
             "type": item.type,
             "image": item.image,
             "time": item.created_at,
+            "count": Processor.organize_downy_detected_info(json.loads(item.data.replace("\'", "\""))),
             "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
         })
     return {
-        "is_success": True,
+        "success": True,
         "message": "数据获取成功",
-        "created_at": datetime.now().isoformat(timespec="seconds") + 'Z',
+        "time": datetime.now().isoformat(timespec="seconds") + 'Z',
         "data": result
     }
