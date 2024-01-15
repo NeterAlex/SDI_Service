@@ -47,7 +47,7 @@ def on_startup() -> None:
 
 # Global error handler
 @app.exception_handler(Exception)
-async def exception_handler(exc):
+async def exception_handler(request, exc):
     logging.exception(f"[Error] {exc}")
     return {
         "is_success": False,
@@ -247,6 +247,7 @@ def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> o
             "id": item.id,
             "type": item.type,
             "image": item.image,
+            "time": item.created_at,
             "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
         })
     return {

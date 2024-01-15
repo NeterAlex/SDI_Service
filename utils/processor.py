@@ -21,7 +21,7 @@ class Processor:
         for item in data:
             item["xyxy"] = "omit"
             item["conf"] = "{:.2f}".format(float(item["conf"]))
-            cls_name = item["cls"]
+            cls_name = int(item["cls"])
             if cls_name in cls_dict:
                 cls_dict[cls_name].append(item)
             else:
