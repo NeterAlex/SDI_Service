@@ -68,11 +68,6 @@ async def verify_token(request: Request, call_next):
     """
     Middleware to verify that the token is valid
     """
-    auth_error = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid authentication credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     # Get request path
     path: str = request.get('path')
     # Exclude /login & /docs & /static
@@ -85,14 +80,13 @@ async def verify_token(request: Request, call_next):
     else:
         try:
             # Get token
-            authorization: str = request.headers.get('authorization')
+            authorization: str = request.headers.get('Authorization')
             if not authorization:
-                response = Response(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    content="Invalid authentication credentials",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-                return response
+                return {
+                    "success": False,
+                    "message": "Token已失效",
+                    "time": datetime.now().isoformat(timespec="seconds") + 'Z',
+                }
             token = authorization.split(' ')[1]
             # Verify token
             user_claim = decode_jwt_token(token)
@@ -100,8 +94,11 @@ async def verify_token(request: Request, call_next):
                 response = await call_next(request)
                 return response
         except Exception as e:
-            logging.log(1, e.__str__())
-            raise auth_error
+            return {
+                "success": False,
+                "message": "Token已失效",
+                "time": datetime.now().isoformat(timespec="seconds") + 'Z',
+            }
 
 
 # Controllers
@@ -237,7 +234,7 @@ async def login_user(*, session: Session = Depends(get_session), username: Annot
 
 
 @app.get("/data/list")
-def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> object:
+async def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> object:
     """
     Get data list owned by certain user
     :param session: Session
@@ -268,7 +265,7 @@ def get_data_list(*, session: Session = Depends(get_session), user_id: int) -> o
 
 
 @app.get("/data/recent")
-def get_recent_data(*, session: Session = Depends(get_session), user_id: int, count: int = 3) -> object:
+async def get_recent_data(*, session: Session = Depends(get_session), user_id: int, count: int = 3) -> object:
     user = session.get(User, user_id)
     if not user:
         return {"success": False, "message": "用户不存在"}
