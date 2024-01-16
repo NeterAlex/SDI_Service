@@ -90,6 +90,7 @@ async def verify_token(request: Request, call_next):
             token = authorization.split(' ')[1]
             # Verify token
             user_claim = decode_jwt_token(token)
+            print(user_claim)
             if user_claim.get('user_id') is not None:
                 response = await call_next(request)
                 return response

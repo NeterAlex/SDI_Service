@@ -39,7 +39,5 @@ def decode_jwt_token(token: str) -> dict:
         if datetime.utcnow() > datetime.fromtimestamp(payload['exp']):
             raise jwt.ExpiredSignatureError("Token已过期")
         return payload
-    except jwt.ExpiredSignatureError:
-        raise jwt.ExpiredSignatureError("Token已过期")
     except jwt.InvalidTokenError:
         raise jwt.InvalidTokenError("无效的Token")
