@@ -9,8 +9,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response, Form
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session, select, col
+from sqlmodel import SQLModel, Session, select, col, create_engine
 from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
@@ -72,34 +71,23 @@ async def verify_token(request: Request, call_next):
     path: str = request.get('path')
     # Exclude /login & /docs & /static
     if path.startswith('/ping') | path.startswith('/static') | path.startswith('/user/login') | path.startswith(
-            '/user/register') | path.startswith(
-        '/docs') | path.startswith(
-        '/openapi'):
+            '/user/register'):
         response = await call_next(request)
         return response
     else:
         try:
             # Get token
             authorization: str = request.headers.get('Authorization')
-            if not authorization:
-                return {
-                    "success": False,
-                    "message": "Token已失效",
-                    "time": datetime.now().isoformat(timespec="seconds") + 'Z',
-                }
+            if authorization is None:
+                return Response(status_code=401)
             token = authorization.split(' ')[1]
             # Verify token
             user_claim = decode_jwt_token(token)
-            print(user_claim)
             if user_claim.get('user_id') is not None:
                 response = await call_next(request)
                 return response
-        except Exception as e:
-            return {
-                "success": False,
-                "message": "Token已失效",
-                "time": datetime.now().isoformat(timespec="seconds") + 'Z',
-            }
+        except Exception:
+            return Response(status_code=401)
 
 
 # Controllers
@@ -110,7 +98,7 @@ async def root():
 
 @app.post("/calc/downy")
 async def downy_mildew_detect(*, session: Session = Depends(get_session),
-                              file: UploadFile = File(...), user_id: int) -> object:
+                              file: UploadFile = File(...), user_id: Annotated[int, Form()]) -> object:
     """
     Downy Mildew Detect Controller
     :param user_id: User ID
@@ -148,7 +136,7 @@ async def downy_mildew_detect(*, session: Session = Depends(get_session),
 
 @app.post("/calc/powdery")
 async def powdery_mildew_detect(*, session: Session = Depends(get_session),
-                                file: UploadFile = File(...), user_id: int) -> object:
+                                file: UploadFile = File(...), user_id: Annotated[int, Form()]) -> object:
     """
     Powdery Mildew Detect Controller
     :param user_id: User ID
