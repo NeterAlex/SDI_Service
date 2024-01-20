@@ -14,8 +14,10 @@ from starlette.staticfiles import StaticFiles
 
 from model import User, MildewData
 from utils import Predictor, hash_password, generate_jwt_token, verify_password, decode_jwt_token, Processor
+import os
 
 # Initialize server
+os.environ['TZ'] = 'Asia/Shanghai'
 app = FastAPI(docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
