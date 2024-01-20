@@ -18,6 +18,7 @@ import os
 
 # Initialize server
 os.environ['TZ'] = 'Asia/Shanghai'
+print(datetime.now().isoformat(timespec="seconds") + 'Z')
 app = FastAPI(docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
