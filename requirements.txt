@@ -6,7 +6,7 @@ Pillow==10.2.0
 PyJWT==2.8.0
 python-dotenv==1.0.1
 sqlmodel==0.0.16
-starlette==0.37.1
+starlette==0.36.3
 ultralytics==8.1.9
 python-multipart
 uvicorn
