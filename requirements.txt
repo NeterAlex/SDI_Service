@@ -1,0 +1,12 @@
+fastapi==0.110.0
+numpy==1.26.4
+opencv_python==4.9.0.80
+passlib==1.7.4
+Pillow==10.2.0
+PyJWT==2.8.0
+python-dotenv==1.0.1
+sqlmodel==0.0.16
+starlette==0.37.1
+ultralytics==8.1.9
+python-multipart
+uvicorn
