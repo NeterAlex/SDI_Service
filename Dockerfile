@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 # 准备文件
 COPY ./ /application
 # 执行
-CMD ["uvicorn", "application.main:app", "--proxy-headers" , "--host", "0.0.0.0", "--port", "5020"]
+CMD ["uvicorn", "main:app", "--proxy-headers" , "--host", "0.0.0.0", "--port", "5020"]
