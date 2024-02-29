@@ -4,7 +4,10 @@ LABEL maintainer="NeterAlex <neteralex@outlook.com>"
 WORKDIR /application
 # 安装依赖
 COPY requirements.txt /tmp/requirements.txt
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip uninstall opencv-python
+RUN pip install opencv-python-headless
 # 准备文件
 COPY ./ /application
 # 执行
