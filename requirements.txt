@@ -8,5 +8,7 @@ python-dotenv==1.0.1
 sqlmodel==0.0.16
 starlette==0.36.3
 ultralytics==8.1.9
+torch==2.2.1
+torchvision==0.17.1
 python-multipart
 uvicorn
