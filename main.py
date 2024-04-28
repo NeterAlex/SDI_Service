@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ from typing import Annotated
 
 import cv2
 import numpy as np
+from PIL import Image
 from fastapi import FastAPI, UploadFile, File, Depends, Request, HTTPException, status, Response, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, select, col, create_engine
@@ -111,15 +113,20 @@ async def downy_mildew_detect(*, session: Session = Depends(get_session),
     """
     image_bytes = await file.read()
     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    data, result_stream = downy_pd.predict_bytes(image, False)
+    data, result_bytes = downy_pd.predict_bytes(image, False)
     await file.close()
+    # compress image
+    compressed_image = Image.open(io.BytesIO(result_bytes))
+    compressed_stream = io.BytesIO()
+    compressed_image.save(compressed_stream, format='JPEG', quality=25, optimize=True)
+    compressed_bytes = compressed_stream.getvalue()
     # save image
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
     save_relative_path = os.path.join("static", "results", "downy-mildew",
                                       f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg")
     save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
     with open(save_obvious_path, "wb") as f:
-        f.write(result_stream)
+        f.write(compressed_bytes)
     # operate db
     user = session.get(User, user_id)
     if not user:
@@ -149,15 +156,20 @@ async def powdery_mildew_detect(*, session: Session = Depends(get_session),
     """
     image_bytes = await file.read()
     image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    data, result_stream = powdery_pd.predict_bytes(image, False)
+    data, result_bytes = powdery_pd.predict_bytes(image, False)
     await file.close()
+    # compress image
+    compressed_image = Image.open(io.BytesIO(result_bytes))
+    compressed_stream = io.BytesIO()
+    compressed_image.save(compressed_stream, format='JPEG', quality=25, optimize=True)
+    compressed_bytes = compressed_stream.getvalue()
     # save image
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
     save_relative_path = os.path.join("static", "results", "powdery-mildew",
                                       f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg")
     save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
     with open(save_obvious_path, "wb") as f:
-        f.write(result_stream)
+        f.write(compressed_bytes)
     # operate db
     user = session.get(User, user_id)
     if not user:
