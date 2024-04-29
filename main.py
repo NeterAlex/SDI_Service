@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import cv2
@@ -256,7 +256,7 @@ async def get_data_list(*, session: Session = Depends(get_session), user_id: int
             "id": item.id,
             "type": item.type,
             "image": item.image,
-            "time": item.created_at,
+            "time": item.created_at + timedelta(hours=8),
             "count": Processor.organize_downy_detected_info(json.loads(item.data.replace("\'", "\""))),
             "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
         })
@@ -282,7 +282,7 @@ async def get_recent_data(*, session: Session = Depends(get_session), user_id: i
             "id": item.id,
             "type": item.type,
             "image": item.image,
-            "time": item.created_at,
+            "time": item.created_at + timedelta(hours=8),
             "count": Processor.organize_downy_detected_info(json.loads(item.data.replace("\'", "\""))),
             "data": Processor.organize_detected_result(json.loads(item.data.replace("\'", "\""))),
         })
