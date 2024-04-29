@@ -292,3 +292,30 @@ async def get_recent_data(*, session: Session = Depends(get_session), user_id: i
         "time": datetime.now().isoformat(timespec="seconds") + 'Z',
         "data": result
     }
+
+
+@app.delete("/data")
+async def delete_data(*, session: Session = Depends(get_session), user_id: int, data_id: int) -> object:
+    try:
+        user = session.get(User, user_id)
+        if not user:
+            return {"success": False, "message": "用户不存在"}
+        statement = select(MildewData).where(MildewData.id == data_id)
+        data = session.exec(statement).one()
+        if not data:
+            return {"success": False, "message": "数据不存在"}
+        if data.user_id != user.id:
+            return {"success": False, "message": "不可删除不属于自己的数据"}
+        session.delete(data)
+        session.commit()
+        path = os.path.join(os.getcwd(), data.image)
+        if os.path.exists(path):
+            os.remove(path)
+        return {
+            "success": True,
+            "message": "数据删除成功",
+            "time": datetime.now().isoformat(timespec="seconds") + 'Z',
+            "data": ""
+        }
+    except Exception as e:
+        raise e
