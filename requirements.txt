@@ -6,10 +6,10 @@ PyJWT==2.8.0
 python-dotenv==1.0.1
 sqlmodel==0.0.16
 starlette==0.40.0
-torch==2.2.1
+pytorch==2.2.1
 torchvision==0.17.1
 ultralytics==8.1.9
 opencv-python-headless
 python-multipart
 uvicorn
-bcrypt
+openpyxl
