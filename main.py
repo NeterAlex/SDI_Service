@@ -1,17 +1,12 @@
-import io
 import json
-import logging
 import os
-import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from typing import Annotated
 
-import cv2
-import numpy as np
-from PIL import Image
-from fastapi import FastAPI, UploadFile, File, Depends, Request, Response, Form
+from fastapi import FastAPI, UploadFile, File, Depends, Form, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
 from sqlmodel import SQLModel, Session, select, col, create_engine
 from starlette.staticfiles import StaticFiles
 
@@ -21,8 +16,12 @@ from utils import (
     hash_password,
     generate_jwt_token,
     verify_password,
-    decode_jwt_token,
     Processor,
+    decode_jwt_token,
+    read_img,
+    compress_img,
+    save_img_static,
+    seg_tag,
 )
 
 # Initialize server
@@ -76,7 +75,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Global error handler
 @app.exception_handler(Exception)
 async def exception_handler(_request, exc):
-    logging.exception(f"[Error] {exc}")
+    print(f"[Error] {exc}")
     return {
         "success": False,
         "message": "处理失败，由于" + str(exc),
@@ -86,7 +85,11 @@ async def exception_handler(_request, exc):
 
 # Middleware
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -123,132 +126,111 @@ async def verify_token(request: Request, call_next):
 
 
 # Controllers
-@app.get("/ping")
+@app.get("/ping", response_class=ORJSONResponse)
 async def root():
-    return {"message": "pong"}
+    return ORJSONResponse({"message": "pong"})
 
 
-@app.post("/calc/downy")
+@app.post("/calc/downy", response_class=ORJSONResponse)
 async def downy_mildew_detect(
     *,
     session: Session = Depends(get_session),
     file: UploadFile = File(...),
     user_id: Annotated[int, Form()],
 ) -> object:
-    """
-    Downy Mildew Detect Controller
-    :param user_id: User ID
-    :param session: Session
-    :param file: Image file
-    :return: Result with data and other info
-    """
-    image_bytes = await file.read()
-    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    data, result_bytes = downy_pd.predict_bytes(image, False)
-    await file.close()
-    # compress image
-    compressed_image = Image.open(io.BytesIO(result_bytes))
-    compressed_stream = io.BytesIO()
-    compressed_image.save(compressed_stream, format="JPEG", quality=25, optimize=True)
-    compressed_bytes = compressed_stream.getvalue()
-    # save image
-    current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    save_relative_path = os.path.join(
-        "static",
-        "results",
-        "downy-mildew",
-        f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg",
+    # 读取图片并预测
+    data, result_bytes = downy_pd.predict_bytes(await read_img(file), False)
+    # 保存结果图片
+    compressed_bytes = compress_img(result_bytes)
+    save_path = save_img_static(
+        userid=user_id, img_bytes=compressed_bytes, img_type="downy-mildew"
     )
-    save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
-    with open(save_obvious_path, "wb") as f:
-        f.write(compressed_bytes)
-    # operate db
+    # 添加数据到数据库
     user = session.get(User, user_id)
     if not user:
         return {"success": False, "message": "用户不存在"}
-    data = MildewData(
-        user=user, type="downy", data=data.__str__(), image=save_relative_path
-    )
+    data = MildewData(user=user, type="downy", data=json.dumps(data), image=save_path)
     session.add(data)
     session.commit()
-    # make result
-    result = {
-        "success": True,
-        "message": "识别成功",
-        "time": datetime.now().isoformat(timespec="seconds") + "Z",
-        "data": data,
-    }
+    # 返回结果
+    result = ORJSONResponse(
+        {
+            "success": True,
+            "message": "识别成功",
+            "time": datetime.now().isoformat(timespec="seconds") + "Z",
+            "data": None,
+        }
+    )
     return result
 
 
-@app.post("/calc/powdery")
+@app.post("/calc/powdery", response_class=ORJSONResponse)
 async def powdery_mildew_detect(
     *,
     session: Session = Depends(get_session),
     file: UploadFile = File(...),
     user_id: Annotated[int, Form()],
 ) -> object:
-    """
-    Powdery Mildew Detect Controller
-    :param user_id: User ID
-    :param session: Session
-    :param file: Image file
-    :return: Result with data and other info
-    """
-    image_bytes = await file.read()
-    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    data, result_bytes = powdery_pd.predict_bytes(image, False)
-    await file.close()
-    # compress image
-    compressed_image = Image.open(io.BytesIO(result_bytes))
-    compressed_stream = io.BytesIO()
-    compressed_image.save(compressed_stream, format="JPEG", quality=25, optimize=True)
-    compressed_bytes = compressed_stream.getvalue()
-    # save image
-    current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-    save_relative_path = os.path.join(
-        "static",
-        "results",
-        "powdery-mildew",
-        f"ID{user_id}-{current_time}-{uuid.uuid4().hex[:8]}.jpg",
+    # 读取图片并预测
+    data, result_bytes = powdery_pd.predict_bytes(await read_img(file), False)
+    # 保存结果图片
+    compressed_bytes = compress_img(result_bytes)
+    save_path = save_img_static(
+        userid=user_id, img_bytes=compressed_bytes, img_type="powdery-mildew"
     )
-    save_obvious_path = os.path.join(os.getcwd(), save_relative_path)
-    with open(save_obvious_path, "wb") as f:
-        f.write(compressed_bytes)
-    # operate db
+    # 添加数据到数据库
     user = session.get(User, user_id)
     if not user:
         return {"success": False, "message": "用户不存在"}
-    data = MildewData(
-        user=user, type="powdery", data=data.__str__(), image=save_relative_path
-    )
+    data = MildewData(user=user, type="powdery", data=json.dumps(data), image=save_path)
     session.add(data)
     session.commit()
-    # make result
-    result = {
-        "success": True,
-        "message": "识别成功",
-        "time": datetime.now().isoformat(timespec="seconds") + "Z",
-        "data": data,
-    }
+    # 返回结果
+    result = ORJSONResponse(
+        {
+            "success": True,
+            "message": "识别成功",
+            "time": datetime.now().isoformat(timespec="seconds") + "Z",
+            "data": None,
+        }
+    )
     return result
 
 
-@app.post("/calc/frogeye")
+@app.post("/calc/frogeye", response_class=ORJSONResponse)
 async def frogeye_detect(
     *,
     session: Session = Depends(get_session),
     file: UploadFile = File(...),
     user_id: Annotated[int, Form()],
-) -> None:
-    image_bytes = await file.read()
-    image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    data, result_bytes = powdery_pd.predict_bytes(image, False)
-    await file.close()
-    pass
+) -> object:
+    img = await read_img(file)
+    data, _ = frogeye_pd.predict_bytes(img, False, conf=0.05, iou=0.05)
+    data, image_bytes = seg_tag(data, img)
+    compressed_bytes = compress_img(image_bytes)
+    save_path = save_img_static(
+        userid=user_id, img_bytes=compressed_bytes, img_type="frogeye"
+    )
+    # 添加数据到数据库
+    user = session.get(User, user_id)
+    if not user:
+        return {"success": False, "message": "用户不存在"}
+    data = MildewData(user=user, type="frogeye", data=json.dumps(data), image=save_path)
+    session.add(data)
+    session.commit()
+    # 返回结果
+    result = ORJSONResponse(
+        {
+            "success": True,
+            "message": "识别成功",
+            "time": datetime.now().isoformat(timespec="seconds") + "Z",
+            "data": None,
+        }
+    )
+    return result
 
 
-@app.post("/user/register")
+@app.post("/user/register", response_class=ORJSONResponse)
 async def register_user(
     *,
     session: Session = Depends(get_session),
@@ -256,57 +238,46 @@ async def register_user(
     password: Annotated[str, Form()],
     nickname: Annotated[str, Form()],
 ) -> object:
-    """
-    Register new user
-    :param session: Session
-    :param username: Username
-    :param password: Password
-    :param nickname: Nickname
-    :return: Result with if register is successful
-    """
     user = User(username=username, password=hash_password(password), nickname=nickname)
     session.add(user)
     session.commit()
     session.refresh(user)
-    return {
-        "success": True,
-        "message": "注册成功",
-    }
+    return ORJSONResponse(
+        {
+            "success": True,
+            "message": "注册成功",
+        }
+    )
 
 
-@app.post("/user/login")
+@app.post("/user/login", response_class=ORJSONResponse)
 async def login_user(
     *,
     session: Session = Depends(get_session),
     username: Annotated[str, Form()],
     password: Annotated[str, Form()],
 ) -> object:
-    """
-    User login with username and password
-    :param session: Session
-    :param username: Username
-    :param password: Password
-    :return: Result with jwt data
-    """
     statement = select(User).where(User.username == username)
     user = session.exec(statement).first()
     if not user:
         return {"success": False, "message": "用户不存在"}
     if not verify_password(password, user.password):
         return {"success": False, "message": "密码不匹配"}
-    return {
-        "success": True,
-        "message": "登录成功",
-        "time": datetime.now().isoformat(timespec="seconds") + "Z",
-        "data": {
-            "id": user.id,
-            "nickname": user.nickname,
-            "jwt_token": generate_jwt_token(user),
-        },
-    }
+    return ORJSONResponse(
+        {
+            "success": True,
+            "message": "登录成功",
+            "time": datetime.now().isoformat(timespec="seconds") + "Z",
+            "data": {
+                "id": user.id,
+                "nickname": user.nickname,
+                "jwt_token": generate_jwt_token(user),
+            },
+        }
+    )
 
 
-@app.get("/data/list")
+@app.get("/data/list", response_class=ORJSONResponse)
 async def get_data_list(
     *, session: Session = Depends(get_session), user_id: int
 ) -> object:
@@ -323,29 +294,41 @@ async def get_data_list(
     data = session.exec(statement).all()
     result = []
     for item in data:
-        result.append(
-            {
-                "id": item.id,
-                "type": item.type,
-                "image": item.image,
-                "time": item.created_at + timedelta(hours=8),
-                "count": Processor.organize_downy_detected_info(
-                    json.loads(item.data.replace("'", '"'))
-                ),
-                "data": Processor.organize_detected_result(
-                    json.loads(item.data.replace("'", '"'))
-                ),
-            }
-        )
-    return {
-        "success": True,
-        "message": "数据获取成功",
-        "time": datetime.now().isoformat(timespec="seconds") + "Z",
-        "data": result,
-    }
+        if item.type == "frogeye":
+            result.append(
+                {
+                    "id": item.id,
+                    "type": item.type,
+                    "image": item.image,
+                    "time": item.created_at + timedelta(hours=8),
+                    "count": 0,
+                    "data": json.loads(item.data),
+                }
+            )
+        elif item.type == "downy" or "powdery":
+            result.append(
+                {
+                    "id": item.id,
+                    "type": item.type,
+                    "image": item.image,
+                    "time": item.created_at + timedelta(hours=8),
+                    "count": (
+                        Processor.organize_downy_detected_info(json.loads(item.data))
+                    ),
+                    "data": (Processor.organize_detected_result(json.loads(item.data))),
+                }
+            )
+    return ORJSONResponse(
+        {
+            "success": True,
+            "message": "数据获取成功",
+            "time": datetime.now().isoformat(timespec="seconds") + "Z",
+            "data": result,
+        }
+    )
 
 
-@app.get("/data/recent")
+@app.get("/data/recent", response_class=ORJSONResponse)
 async def get_recent_data(
     *, session: Session = Depends(get_session), user_id: int, count: int = 3
 ) -> object:
@@ -361,29 +344,41 @@ async def get_recent_data(
     data = session.exec(statement).all()
     result = []
     for item in data:
-        result.append(
-            {
-                "id": item.id,
-                "type": item.type,
-                "image": item.image,
-                "time": item.created_at + timedelta(hours=8),
-                "count": Processor.organize_downy_detected_info(
-                    json.loads(item.data.replace("'", '"'))
-                ),
-                "data": Processor.organize_detected_result(
-                    json.loads(item.data.replace("'", '"'))
-                ),
-            }
-        )
-    return {
-        "success": True,
-        "message": "数据获取成功",
-        "time": datetime.now().isoformat(timespec="seconds") + "Z",
-        "data": result,
-    }
+        if item.type == "frogeye":
+            result.append(
+                {
+                    "id": item.id,
+                    "type": item.type,
+                    "image": item.image,
+                    "time": item.created_at + timedelta(hours=8),
+                    "count": 0,
+                    "data": json.loads(item.data),
+                }
+            )
+        elif item.type == "downy" or "powdery":
+            result.append(
+                {
+                    "id": item.id,
+                    "type": item.type,
+                    "image": item.image,
+                    "time": item.created_at + timedelta(hours=8),
+                    "count": (
+                        Processor.organize_downy_detected_info(json.loads(item.data))
+                    ),
+                    "data": (Processor.organize_detected_result(json.loads(item.data))),
+                }
+            )
+    return ORJSONResponse(
+        {
+            "success": True,
+            "message": "数据获取成功",
+            "time": datetime.now().isoformat(timespec="seconds") + "Z",
+            "data": result,
+        }
+    )
 
 
-@app.delete("/data")
+@app.delete("/data", response_class=ORJSONResponse)
 async def delete_data(
     *, session: Session = Depends(get_session), user_id: int, data_id: int
 ) -> object:
@@ -402,11 +397,13 @@ async def delete_data(
         path = os.path.join(os.getcwd(), data.image)
         if os.path.exists(path):
             os.remove(path)
-        return {
-            "success": True,
-            "message": "数据删除成功",
-            "time": datetime.now().isoformat(timespec="seconds") + "Z",
-            "data": "",
-        }
+        return ORJSONResponse(
+            {
+                "success": True,
+                "message": "数据删除成功",
+                "time": datetime.now().isoformat(timespec="seconds") + "Z",
+                "data": "",
+            }
+        )
     except Exception as e:
         raise e
