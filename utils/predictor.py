@@ -18,13 +18,13 @@ class Predictor:
     def load(self):
         self.model = YOLO(self.model_path, task="detect")
 
-    def predict_bytes(self, image: Any, save_image: bool = False):
-        results = self.model.predict(image)
+    def predict_bytes(self, image: Any, save_image: bool = False, conf=0.2, iou=0.5):
+        results = self.model.predict(image, conf=conf, iou=iou)
         boxes = results[0].boxes
         image_stream = io.BytesIO()
         im_array = results[0].plot()
         im = Image.fromarray(im_array[..., ::-1])
-        im.save(image_stream, format='JPEG')
+        im.save(image_stream, format="JPEG")
         if save_image:
             file_str = f'assets/image_cache/{time.strftime("%Y-%m-%d-%H-%M-%S")}-{uuid.uuid4().hex[:8]}.jpg'
             im.save(file_str)
@@ -39,11 +39,6 @@ class Predictor:
         cls_list: list = boxes.cls.tolist()
         merged_data: list[dict[str, int | Any]] = []
         for xyxy, conf, cls in zip(xyxy_list, conf_list, cls_list):
-            merged_data.append({
-                'id': _id,
-                'xyxy': xyxy,
-                'conf': conf,
-                'cls': cls
-            })
+            merged_data.append({"id": _id, "xyxy": xyxy, "conf": conf, "cls": cls})
             _id += 1
         return merged_data
