@@ -34,8 +34,15 @@ def seg_tag(boxes_data, cv_image):
         leaf_roi[leaf_mask > 0] = (0, 255, 0)  # 绿色
 
         # 将半透明叶片区域叠加到原图
-        alpha = 0.1
-        cv2.addWeighted(leaf_overlay, alpha, image, 1 - alpha, 0, image)
+        text_background_alpha = 0.1
+        cv2.addWeighted(
+            leaf_overlay,
+            text_background_alpha,
+            image,
+            1 - text_background_alpha,
+            0,
+            image,
+        )
 
         lesion_mask = np.zeros((lh, lw), dtype=np.uint8)
         overlay = image.copy()
@@ -90,22 +97,46 @@ def seg_tag(boxes_data, cv_image):
         }
         leaf_lesion_areas.append(leaf_info)
 
-        alpha = 0.3
-        cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
-        cv2.rectangle(image, (lx, ly), (rx, ry), (0, 230, 0), 3)
+        # 绘制叶片框
+        leaf_background_alpha = 0.3
+        cv2.addWeighted(
+            overlay, leaf_background_alpha, image, 1 - leaf_background_alpha, 0, image
+        )
+        cv2.rectangle(image, (lx, ly), (rx, ry), (104, 31, 17), 3)
         cv2.putText(
             image,
             f"{index}",
             (lx, ly - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             1.5,
-            (0, 230, 0),
+            (104, 31, 17),
             2,
         )
+
         # 在叶片上标注病变率
-        text = f"Lesion ratio: {lesion_ratio:.2%}, count: {lesion_count}, avg_gray: {avg_gray_value:.2f}"
+        text = f"Lesion ratio: {lesion_ratio:.2%}, Gray-scale: {avg_gray_value:.2f}"
+        (text_width, text_height), baseline = cv2.getTextSize(
+            text, cv2.FONT_HERSHEY_SIMPLEX, 1, 2
+        )
+        top_left = (lx, ry - text_height - baseline - 13)
+        bottom_right = (lx + 5 + text_width, ry + baseline - 13)
+        overlay = image.copy()
+        cv2.rectangle(
+            overlay, top_left, bottom_right, (104, 31, 17), thickness=cv2.FILLED
+        )
+        text_background_alpha = 0.5
+        cv2.addWeighted(
+            overlay, text_background_alpha, image, 1 - text_background_alpha, 0, image
+        )
+
         cv2.putText(
-            image, text, (lx, ry + 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 230, 0), 2
+            image,
+            text,
+            (lx + 5, ry - 13),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            2,
         )
 
     _, image_bytes = cv2.imencode(".jpg", image)
