@@ -301,8 +301,8 @@ async def get_data_list(
                     "type": item.type,
                     "image": item.image,
                     "time": item.created_at + timedelta(hours=8),
-                    "count": 0,
-                    "data": json.loads(item.data),
+                    "count": len(json.loads(item.data)),
+                    "data": None,
                 }
             )
         elif item.type == "downy" or "powdery":
@@ -315,7 +315,7 @@ async def get_data_list(
                     "count": (
                         Processor.organize_downy_detected_info(json.loads(item.data))
                     ),
-                    "data": (Processor.organize_detected_result(json.loads(item.data))),
+                    "data": None,
                 }
             )
     return ORJSONResponse(
@@ -351,8 +351,8 @@ async def get_recent_data(
                     "type": item.type,
                     "image": item.image,
                     "time": item.created_at + timedelta(hours=8),
-                    "count": 0,
-                    "data": json.loads(item.data),
+                    "count": len(json.loads(item.data)),
+                    "data": None,
                 }
             )
         elif item.type == "downy" or "powdery":
@@ -365,7 +365,7 @@ async def get_recent_data(
                     "count": (
                         Processor.organize_downy_detected_info(json.loads(item.data))
                     ),
-                    "data": (Processor.organize_detected_result(json.loads(item.data))),
+                    "data": None,
                 }
             )
     return ORJSONResponse(
@@ -403,6 +403,53 @@ async def delete_data(
                 "message": "数据删除成功",
                 "time": datetime.now().isoformat(timespec="seconds") + "Z",
                 "data": "",
+            }
+        )
+    except Exception as e:
+        raise e
+
+
+@app.get("/data", response_class=ORJSONResponse)
+async def get_data(
+    *, session: Session = Depends(get_session), user_id: int, data_id: int
+) -> object:
+    try:
+        user = session.get(User, user_id)
+        if not user:
+            return {"success": False, "message": "用户不存在"}
+        statement = select(MildewData).where(MildewData.id == data_id)
+        data = session.exec(statement).one()
+        if not data:
+            return {"success": False, "message": "数据不存在"}
+        if data.user_id != user.id:
+            return {"success": False, "message": "不可获取不属于自己的数据"}
+        if data.type == "frogeye":
+            result = {
+                "id": data.id,
+                "type": data.type,
+                "image": data.image,
+                "time": data.created_at + timedelta(hours=8),
+                "count": 0,
+                "data": json.loads(data.data),
+            }
+
+        elif data.type == "downy" or "powdery":
+            result = {
+                "id": data.id,
+                "type": data.type,
+                "image": data.image,
+                "time": data.created_at + timedelta(hours=8),
+                "count": (
+                    Processor.organize_downy_detected_info(json.loads(data.data))
+                ),
+                "data": (Processor.organize_detected_result(json.loads(data.data))),
+            }
+        return ORJSONResponse(
+            {
+                "success": True,
+                "message": "数据删除成功",
+                "time": datetime.now().isoformat(timespec="seconds") + "Z",
+                "data": result,
             }
         )
     except Exception as e:
