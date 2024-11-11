@@ -2,12 +2,42 @@ import cv2
 import numpy as np
 
 
-def seg_tag(boxes_data, cv_image):
+def sort_xyxy(boxes_data: list[dict], y_tolerance: int = 500) -> list[dict]:
+    """
+    按 xyxy 排序数据
+    @param boxes_data: 包含 xyxy 字段的 list[dict]
+    @param y_tolerance: 用于判定是否为一行内的 y 容忍度
+    @return:
+    """
+    detections_sorted_by_y = sorted(boxes_data, key=lambda d: d["xyxy"][1])
+
+    grouped_detections = []
+    current_group = [detections_sorted_by_y[0]]
+
+    for detection in detections_sorted_by_y[1:]:
+        prev_y2 = current_group[-1]["xyxy"][3]
+        current_y2 = detection["xyxy"][3]
+        if abs(current_y2 - prev_y2) <= y_tolerance:
+            current_group.append(detection)
+        else:
+            grouped_detections.append(sorted(current_group, key=lambda d: d["xyxy"][0]))
+            current_group = [detection]
+
+    if current_group:
+        grouped_detections.append(sorted(current_group, key=lambda d: d["xyxy"][0]))
+
+    sorted_boxes = [d for group in grouped_detections for d in group]
+    return sorted_boxes
+
+
+def seg_tag(boxes_data: list[dict], cv_image: object):
     # 读取原图
     if cv_image is None:
         raise ValueError("无法读取图片")
     image = cv_image
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # boxes_data = sort_xyxy(boxes_data)
 
     leaf_boxes = [box for box in boxes_data if box["cls"] == 4]  # =4
     lesion_boxes = [box for box in boxes_data if 1 <= box["cls"] <= 3]  # <=3
