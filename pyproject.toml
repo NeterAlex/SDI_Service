@@ -22,3 +22,6 @@ dependencies = [
     "ultralytics>=8.3.133",
     "uvicorn[standard]>=0.34.2",
 ]
+[[tool.uv.index]]
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+default = true
