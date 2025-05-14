@@ -1,0 +1,24 @@
+[project]
+name = "py-service"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "bcrypt>=4.3.0",
+    "fastapi[standard]>=0.115.12",
+    "numpy>=2.2.5",
+    "opencv-python-headless>=4.11.0.86",
+    "openpyxl>=3.1.5",
+    "orjson>=3.10.18",
+    "passlib>=1.7.4",
+    "pillow>=11.2.1",
+    "pyjwt>=2.10.1",
+    "python-dotenv>=1.1.0",
+    "python-multipart>=0.0.20",
+    "sqlmodel>=0.0.24",
+    "torch>=2.7.0",
+    "torchaudio>=2.7.0",
+    "torchvision>=0.22.0",
+    "ultralytics>=8.3.133",
+    "uvicorn[standard]>=0.34.2",
+]
