@@ -6,3 +6,8 @@
 /static/results/powdery-mildew/*.jpg
 dev.env
 database.db
+/mock_data/
+/runs/
+**/__pycache__/
+/.idea/
+uv.lock
