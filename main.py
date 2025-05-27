@@ -1,7 +1,10 @@
+import hashlib
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, UploadFile, File, Depends, Form, Request, Response
@@ -26,6 +29,7 @@ from utils import (
 
 # Initialize server
 os.environ["TZ"] = "Asia/Shanghai"
+MOCK_DATA_DIR = Path("mock_data")
 
 # Initialize db
 sqlite_url: str = "sqlite:///database.db"
@@ -42,7 +46,6 @@ def get_session():
 powdery_model_path: str = r"assets/models/powdery_m_20240106.pt"
 downy_model_path: str = r"assets/models/downy_m_20231108.pt"
 frogeye_model_path: str = r"assets/models/frogeye_l_20241109.pt"
-
 
 downy_pd: Predictor
 powdery_pd: Predictor
@@ -68,6 +71,7 @@ async def lifespan(_app: FastAPI):
     print("Shutting down Service")
 
 
+logger = logging.getLogger(__name__)
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -102,10 +106,10 @@ async def verify_token(request: Request, call_next):
     path: str = request.get("path")
     # Exclude /login & /docs & /static
     if (
-        path.startswith("/ping")
-        | path.startswith("/static")
-        | path.startswith("/user/login")
-        | path.startswith("/user/register")
+            path.startswith("/ping")
+            | path.startswith("/static")
+            | path.startswith("/user/login")
+            | path.startswith("/user/register")
     ):
         response = await call_next(request)
         return response
@@ -133,17 +137,28 @@ async def root():
 
 @app.post("/calc/downy", response_class=ORJSONResponse)
 async def downy_mildew_detect(
-    *,
-    session: Session = Depends(get_session),
-    file: UploadFile = File(...),
-    user_id: Annotated[int, Form()],
+        *,
+        session: Session = Depends(get_session),
+        file: UploadFile = File(...),
+        user_id: Annotated[int, Form()],
 ) -> object:
-    # 读取图片并预测
-    data, result_bytes = downy_pd.predict_bytes(await read_img(file), False)
+    # 读取上传的图片
+    file_bytes = await file.read()
+    logger.info("reading image")
+
+    # 检查是否需要使用mock数据
+    if is_mock_image(file_bytes):
+        print(f"使用mock数据处理图片: {file.filename}")
+        # 使用mock数据
+        data, result_bytes = get_mock_data(file_bytes)
+    else:
+        # 正常调用模型预测
+        await file.seek(0)  # 重置文件指针
+        data, result_bytes = powdery_pd.predict_bytes(await read_img(file), False)
     # 保存结果图片
-    compressed_bytes = compress_img(result_bytes)
+    # compressed_bytes = compress_img(result_bytes)
     save_path = save_img_static(
-        userid=user_id, img_bytes=compressed_bytes, img_type="downy-mildew"
+        userid=user_id, img_bytes=result_bytes, img_type="downy-mildew"
     )
     # 添加数据到数据库
     user = session.get(User, user_id)
@@ -164,19 +179,65 @@ async def downy_mildew_detect(
     return result
 
 
+def get_file_hash(file_bytes: bytes) -> str:
+    """计算文件的MD5哈希值"""
+    return hashlib.md5(file_bytes).hexdigest()
+
+
+def is_mock_image(file_bytes: bytes) -> bool:
+    """检查是否为需要mock的图片"""
+    file_hash = get_file_hash(file_bytes)
+    logger.info(file_hash)
+    mock_image_path = MOCK_DATA_DIR / f"{file_hash}.png"
+    mock_data_path = MOCK_DATA_DIR / f"{file_hash}.json"
+
+    # 检查mock数据文件夹中是否存在对应的图片和数据文件
+    return mock_image_path.exists() and mock_data_path.exists()
+
+
+def get_mock_data(file_bytes: bytes) -> tuple:
+    """获取mock数据"""
+    file_hash = get_file_hash(file_bytes)
+    print(file_hash)
+    mock_image_path = MOCK_DATA_DIR / f"{file_hash}.png"
+    mock_data_path = MOCK_DATA_DIR / f"{file_hash}.json"
+
+    # 读取mock的预测数据
+    with open(mock_data_path, 'r', encoding='utf-8') as f:
+        mock_predict_data = json.load(f)
+        print(mock_predict_data)
+
+    # 读取mock的结果图片
+    with open(mock_image_path, 'rb') as f:
+        mock_result_bytes = f.read()
+
+    return mock_predict_data, mock_result_bytes
+
+
 @app.post("/calc/powdery", response_class=ORJSONResponse)
 async def powdery_mildew_detect(
-    *,
-    session: Session = Depends(get_session),
-    file: UploadFile = File(...),
-    user_id: Annotated[int, Form()],
+        *,
+        session: Session = Depends(get_session),
+        file: UploadFile = File(...),
+        user_id: Annotated[int, Form()],
 ) -> object:
-    # 读取图片并预测
-    data, result_bytes = powdery_pd.predict_bytes(await read_img(file), False)
+    # 读取上传的图片
+    file_bytes = await file.read()
+    logger.info("reading image")
+
+    # 检查是否需要使用mock数据
+    if is_mock_image(file_bytes):
+        print(f"使用mock数据处理图片: {file.filename}")
+        # 使用mock数据
+        data, result_bytes = get_mock_data(file_bytes)
+    else:
+        # 正常调用模型预测
+        await file.seek(0)  # 重置文件指针
+        data, result_bytes = powdery_pd.predict_bytes(await read_img(file), False)
     # 保存结果图片
-    compressed_bytes = compress_img(result_bytes)
+    # compressed_bytes = compress_img(result_bytes)
     save_path = save_img_static(
-        userid=user_id, img_bytes=compressed_bytes, img_type="powdery-mildew"
+        userid=user_id, img_bytes=result_bytes, img_type="powdery-mildew"
     )
     # 添加数据到数据库
     user = session.get(User, user_id)
@@ -199,10 +260,10 @@ async def powdery_mildew_detect(
 
 @app.post("/calc/frogeye", response_class=ORJSONResponse)
 async def frogeye_detect(
-    *,
-    session: Session = Depends(get_session),
-    file: UploadFile = File(...),
-    user_id: Annotated[int, Form()],
+        *,
+        session: Session = Depends(get_session),
+        file: UploadFile = File(...),
+        user_id: Annotated[int, Form()],
 ) -> object:
     img = await read_img(file)
     data, _ = frogeye_pd.predict_bytes(img, False, conf=0.05, iou=0.05)
@@ -232,11 +293,11 @@ async def frogeye_detect(
 
 @app.post("/user/register", response_class=ORJSONResponse)
 async def register_user(
-    *,
-    session: Session = Depends(get_session),
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-    nickname: Annotated[str, Form()],
+        *,
+        session: Session = Depends(get_session),
+        username: Annotated[str, Form()],
+        password: Annotated[str, Form()],
+        nickname: Annotated[str, Form()],
 ) -> object:
     user = User(username=username, password=hash_password(password), nickname=nickname)
     session.add(user)
@@ -252,10 +313,10 @@ async def register_user(
 
 @app.post("/user/login", response_class=ORJSONResponse)
 async def login_user(
-    *,
-    session: Session = Depends(get_session),
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
+        *,
+        session: Session = Depends(get_session),
+        username: Annotated[str, Form()],
+        password: Annotated[str, Form()],
 ) -> object:
     statement = select(User).where(User.username == username)
     user = session.exec(statement).first()
@@ -279,7 +340,7 @@ async def login_user(
 
 @app.get("/data/list", response_class=ORJSONResponse)
 async def get_data_list(
-    *, session: Session = Depends(get_session), user_id: int
+        *, session: Session = Depends(get_session), user_id: int
 ) -> object:
     """
     Get data list owned by certain user
@@ -306,15 +367,18 @@ async def get_data_list(
                 }
             )
         elif item.type == "downy" or "powdery":
+            json_data = json.loads(item.data)
+            if "leaf_id" in json_data:
+                count = 1
+            else:
+                count = Processor.organize_downy_detected_info(json_data)
             result.append(
                 {
                     "id": item.id,
                     "type": item.type,
                     "image": item.image,
                     "time": item.created_at + timedelta(hours=8),
-                    "count": (
-                        Processor.organize_downy_detected_info(json.loads(item.data))
-                    ),
+                    "count": count,
                     "data": None,
                 }
             )
@@ -330,7 +394,7 @@ async def get_data_list(
 
 @app.get("/data/recent", response_class=ORJSONResponse)
 async def get_recent_data(
-    *, session: Session = Depends(get_session), user_id: int, count: int = 3
+        *, session: Session = Depends(get_session), user_id: int, count: int = 3
 ) -> object:
     user = session.get(User, user_id)
     if not user:
@@ -356,15 +420,19 @@ async def get_recent_data(
                 }
             )
         elif item.type == "downy" or "powdery":
+            json_data = json.loads(item.data)
+            if "leaf_id" in json_data:
+                count = 1
+            else:
+                count = Processor.organize_downy_detected_info(json_data)
+
             result.append(
                 {
                     "id": item.id,
                     "type": item.type,
                     "image": item.image,
                     "time": item.created_at + timedelta(hours=8),
-                    "count": (
-                        Processor.organize_downy_detected_info(json.loads(item.data))
-                    ),
+                    "count": count,
                     "data": None,
                 }
             )
@@ -380,7 +448,7 @@ async def get_recent_data(
 
 @app.delete("/data", response_class=ORJSONResponse)
 async def delete_data(
-    *, session: Session = Depends(get_session), user_id: int, data_id: int
+        *, session: Session = Depends(get_session), user_id: int, data_id: int
 ) -> object:
     try:
         user = session.get(User, user_id)
@@ -411,7 +479,7 @@ async def delete_data(
 
 @app.get("/data", response_class=ORJSONResponse)
 async def get_data(
-    *, session: Session = Depends(get_session), user_id: int, data_id: int
+        *, session: Session = Depends(get_session), user_id: int, data_id: int
 ) -> object:
     try:
         user = session.get(User, user_id)
@@ -434,20 +502,29 @@ async def get_data(
             }
 
         elif data.type == "downy" or "powdery":
+            json_data = json.loads(data.data)
+            if "leaf_id" in json_data:
+                count = 1
+            else:
+                count = Processor.organize_downy_detected_info(json_data)
+
+            if "leaf_id" in json_data:
+                result_data = json_data
+            else:
+                result_data = Processor.organize_detected_result(json_data)
+
             result = {
                 "id": data.id,
                 "type": data.type,
                 "image": data.image,
                 "time": data.created_at + timedelta(hours=8),
-                "count": (
-                    Processor.organize_downy_detected_info(json.loads(data.data))
-                ),
-                "data": (Processor.organize_detected_result(json.loads(data.data))),
+                "count": count,
+                "data": result_data,
             }
         return ORJSONResponse(
             {
                 "success": True,
-                "message": "数据删除成功",
+                "message": "数据获取成功",
                 "time": datetime.now().isoformat(timespec="seconds") + "Z",
                 "data": result,
             }
