@@ -103,20 +103,20 @@ async def verify_token(request: Request, call_next):
     Middleware to verify that the token is valid
     """
     # Get request path
-    path: str = request.get("path")
+    path: str = request.get("path")  # type: ignore
     # Exclude /login & /docs & /static
     if (
-            path.startswith("/ping")
-            | path.startswith("/static")
-            | path.startswith("/user/login")
-            | path.startswith("/user/register")
+        path.startswith("/ping")
+        | path.startswith("/static")
+        | path.startswith("/user/login")
+        | path.startswith("/user/register")
     ):
         response = await call_next(request)
         return response
     else:
         try:
             # Get token
-            authorization: str = request.headers.get("Authorization")
+            authorization: str = request.headers.get("Authorization")  # type: ignore
             if authorization is None:
                 return Response(status_code=401)
             token = authorization.split(" ")[1]
@@ -137,10 +137,10 @@ async def root():
 
 @app.post("/calc/downy", response_class=ORJSONResponse)
 async def downy_mildew_detect(
-        *,
-        session: Session = Depends(get_session),
-        file: UploadFile = File(...),
-        user_id: Annotated[int, Form()],
+    *,
+    session: Session = Depends(get_session),
+    file: UploadFile = File(...),
+    user_id: Annotated[int, Form()],
 ) -> object:
     # 读取上传的图片
     file_bytes = await file.read()
@@ -203,12 +203,12 @@ def get_mock_data(file_bytes: bytes) -> tuple:
     mock_data_path = MOCK_DATA_DIR / f"{file_hash}.json"
 
     # 读取mock的预测数据
-    with open(mock_data_path, 'r', encoding='utf-8') as f:
+    with open(mock_data_path, "r", encoding="utf-8") as f:
         mock_predict_data = json.load(f)
         print(mock_predict_data)
 
     # 读取mock的结果图片
-    with open(mock_image_path, 'rb') as f:
+    with open(mock_image_path, "rb") as f:
         mock_result_bytes = f.read()
 
     return mock_predict_data, mock_result_bytes
@@ -216,10 +216,10 @@ def get_mock_data(file_bytes: bytes) -> tuple:
 
 @app.post("/calc/powdery", response_class=ORJSONResponse)
 async def powdery_mildew_detect(
-        *,
-        session: Session = Depends(get_session),
-        file: UploadFile = File(...),
-        user_id: Annotated[int, Form()],
+    *,
+    session: Session = Depends(get_session),
+    file: UploadFile = File(...),
+    user_id: Annotated[int, Form()],
 ) -> object:
     # 读取上传的图片
     file_bytes = await file.read()
@@ -260,10 +260,10 @@ async def powdery_mildew_detect(
 
 @app.post("/calc/frogeye", response_class=ORJSONResponse)
 async def frogeye_detect(
-        *,
-        session: Session = Depends(get_session),
-        file: UploadFile = File(...),
-        user_id: Annotated[int, Form()],
+    *,
+    session: Session = Depends(get_session),
+    file: UploadFile = File(...),
+    user_id: Annotated[int, Form()],
 ) -> object:
     img = await read_img(file)
     data, _ = frogeye_pd.predict_bytes(img, False, conf=0.05, iou=0.05)
@@ -293,11 +293,11 @@ async def frogeye_detect(
 
 @app.post("/user/register", response_class=ORJSONResponse)
 async def register_user(
-        *,
-        session: Session = Depends(get_session),
-        username: Annotated[str, Form()],
-        password: Annotated[str, Form()],
-        nickname: Annotated[str, Form()],
+    *,
+    session: Session = Depends(get_session),
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    nickname: Annotated[str, Form()],
 ) -> object:
     user = User(username=username, password=hash_password(password), nickname=nickname)
     session.add(user)
@@ -313,10 +313,10 @@ async def register_user(
 
 @app.post("/user/login", response_class=ORJSONResponse)
 async def login_user(
-        *,
-        session: Session = Depends(get_session),
-        username: Annotated[str, Form()],
-        password: Annotated[str, Form()],
+    *,
+    session: Session = Depends(get_session),
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
 ) -> object:
     statement = select(User).where(User.username == username)
     user = session.exec(statement).first()
@@ -340,7 +340,7 @@ async def login_user(
 
 @app.get("/data/list", response_class=ORJSONResponse)
 async def get_data_list(
-        *, session: Session = Depends(get_session), user_id: int
+    *, session: Session = Depends(get_session), user_id: int
 ) -> object:
     """
     Get data list owned by certain user
@@ -394,7 +394,7 @@ async def get_data_list(
 
 @app.get("/data/recent", response_class=ORJSONResponse)
 async def get_recent_data(
-        *, session: Session = Depends(get_session), user_id: int, count: int = 3
+    *, session: Session = Depends(get_session), user_id: int, count: int = 3
 ) -> object:
     user = session.get(User, user_id)
     if not user:
@@ -424,7 +424,7 @@ async def get_recent_data(
             if "leaf_id" in json_data:
                 count = 1
             else:
-                count = Processor.organize_downy_detected_info(json_data)
+                count = Processor.organize_downy_detected_info(json_data)  # type: ignore
 
             result.append(
                 {
@@ -448,7 +448,7 @@ async def get_recent_data(
 
 @app.delete("/data", response_class=ORJSONResponse)
 async def delete_data(
-        *, session: Session = Depends(get_session), user_id: int, data_id: int
+    *, session: Session = Depends(get_session), user_id: int, data_id: int
 ) -> object:
     try:
         user = session.get(User, user_id)
@@ -479,7 +479,7 @@ async def delete_data(
 
 @app.get("/data", response_class=ORJSONResponse)
 async def get_data(
-        *, session: Session = Depends(get_session), user_id: int, data_id: int
+    *, session: Session = Depends(get_session), user_id: int, data_id: int
 ) -> object:
     try:
         user = session.get(User, user_id)
@@ -526,7 +526,7 @@ async def get_data(
                 "success": True,
                 "message": "数据获取成功",
                 "time": datetime.now().isoformat(timespec="seconds") + "Z",
-                "data": result,
+                "data": result,  # type: ignore
             }
         )
     except Exception as e:

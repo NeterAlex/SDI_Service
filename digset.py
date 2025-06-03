@@ -15,7 +15,7 @@ def setup_mock_data():
             continue
 
         # 读取图片并计算hash
-        with open(img_file, 'rb') as f:
+        with open(img_file, "rb") as f:
             file_bytes = f.read()
 
         file_hash = hashlib.md5(file_bytes).hexdigest()
@@ -39,10 +39,10 @@ def setup_mock_data():
                     # 添加更多mock检测区域...
                 ],
                 "severity": "medium",
-                "recommendations": ["建议使用杀菌剂", "加强通风"]
+                "recommendations": ["建议使用杀菌剂", "加强通风"],
             }
 
-            with open(json_path, 'w', encoding='utf-8') as f:
+            with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(mock_data, f, ensure_ascii=False, indent=2)
 
             print(f"创建数据文件: {json_path.name}")
@@ -55,19 +55,19 @@ def add_mock_image(original_image_path: str, result_image_path: str, mock_data: 
     mock_dir.mkdir(exist_ok=True)
 
     # 读取原始图片并计算hash
-    with open(original_image_path, 'rb') as f:
+    with open(original_image_path, "rb") as f:
         file_bytes = f.read()
 
     file_hash = hashlib.md5(file_bytes).hexdigest()
 
     # 复制结果图片
     result_path = mock_dir / f"{file_hash}.jpg"
-    with open(result_image_path, 'rb') as src, open(result_path, 'wb') as dst:
+    with open(result_image_path, "rb") as src, open(result_path, "wb") as dst:
         dst.write(src.read())
 
     # 保存mock数据
     json_path = mock_dir / f"{file_hash}.json"
-    with open(json_path, 'w', encoding='utf-8') as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(mock_data, f, ensure_ascii=False, indent=2)
 
     print(f"已添加mock数据:")
@@ -77,16 +77,4 @@ def add_mock_image(original_image_path: str, result_image_path: str, mock_data: 
 
 
 if __name__ == "__main__":
-    # 方式1: 批量设置（需要先将图片重命名为original_xxx.jpg放在mock_data目录）
     setup_mock_data()
-
-    # 方式2: 手动添加单个mock数据
-    # mock_data_example = {
-    #     "detection_count": 3,
-    #     "confidence": 0.92,
-    #     "areas": [
-    #         {"x": 120, "y": 180, "width": 40, "height": 35, "confidence": 0.95}
-    #     ],
-    #     "severity": "high"
-    # }
-    # add_mock_image("path/to/original.jpg", "path/to/result.jpg", mock_data_example)
